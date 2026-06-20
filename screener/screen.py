@@ -20,7 +20,7 @@ class ScreenParams:
     min_market_cap: float | None = None  # accepted, no-op in v1
     sort_by: str = "rs_vs_nifty"      # rs_vs_nifty | rs_vs_sector | return7
 
-FALLBACK_SECTOR = "NIFTY 200"
+FALLBACK_SECTOR = "the benchmark"
 
 def run_screen(constituents, closes, nifty_closes, sector_closes,
                fundamentals, params: ScreenParams) -> dict:
@@ -47,7 +47,7 @@ def run_screen(constituents, closes, nifty_closes, sector_closes,
                 f"{c.symbol}: no sectoral index for Industry '{c.industry}' "
                 f"-> fell back to {FALLBACK_SECTOR}"
             )
-            sector_ret = nifty_ret  # NIFTY 200 fallback ~ benchmark proxy
+            sector_ret = nifty_ret  # no sector index -> use benchmark return
         else:
             sector_ret = indicators.pct_return(sector_series, params.lookback_days)
 
@@ -111,7 +111,7 @@ def scan_market(**kwargs) -> dict:
     # Resolve NSE equity tokens + index tokens from the instrument dump.
     nse = kite.instruments("NSE")
     eq_token = {i["tradingsymbol"]: i["instrument_token"]
-                for i in nse if i.get("segment") == "NSE"}
+                for i in nse if i.get("instrument_type") == "EQ"}
     idx_token = {i["tradingsymbol"]: i["instrument_token"]
                  for i in nse if i.get("segment") == "INDICES"}
 
@@ -123,6 +123,23 @@ def scan_market(**kwargs) -> dict:
         idx = sector_index_for(c.industry)
         if idx:
             needed_indices.add(idx)
+
+    # The benchmark must resolve, or relative strength is undefined and the scan
+    # would crash later on an empty series. Fail early with an actionable message.
+    if params.benchmark not in idx_token:
+        raise ValueError(
+            f"Benchmark index '{params.benchmark}' not found in Kite's NSE "
+            f"instrument dump. Check the exact tradingsymbol Kite uses."
+        )
+
+    # A needed sector index that Kite names differently is dropped silently below;
+    # surface it as a warning so the user knows those stocks used the fallback.
+    missing_index_warnings = [
+        f"sector index '{name}' not found in Kite instrument dump "
+        f"-> stocks in it fall back to the benchmark"
+        for name in sorted(needed_indices)
+        if name not in idx_token
+    ]
     index_token = {name: idx_token[name] for name in needed_indices
                    if name in idx_token}
 
@@ -141,5 +158,6 @@ def scan_market(**kwargs) -> dict:
 
     out = run_screen(constituents, closes, nifty_closes, sector_closes,
                      _DictFund(), params)
-    out["warnings"] = warnings + idx_warnings + out["warnings"]
+    out["warnings"] = (warnings + idx_warnings + missing_index_warnings
+                       + out["warnings"])
     return out

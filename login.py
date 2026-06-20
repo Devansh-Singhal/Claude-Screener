@@ -7,6 +7,7 @@ http://127.0.0.1:5000/  so autograb works. Otherwise the paste fallback runs.
 import json
 import sys
 import threading
+import time
 import urllib.parse
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -35,9 +36,9 @@ def _autograb(kite) -> str | None:
     print(f"Opening browser; listening on http://127.0.0.1:{config.REDIRECT_PORT}/ ...")
     webbrowser.open(kite.login_url())
     threading.Thread(target=server.handle_request).start()
-    # Block until the single request is handled.
+    # Block until the single request is handled (no tight spin).
     while "request_token" not in token_holder:
-        pass
+        time.sleep(0.05)
     return token_holder["request_token"]
 
 def _paste(kite) -> str:
