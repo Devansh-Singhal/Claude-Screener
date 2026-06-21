@@ -1,5 +1,7 @@
+import json
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 
 from . import indicators
 from .sectors import sector_index_for
@@ -92,6 +94,20 @@ def run_screen(constituents, closes, nifty_closes, sector_closes,
     }
 
 
+def save_result(result: dict, out_dir) -> Path:
+    """Write a scan result to a timestamped JSON file under out_dir and return
+    its path. The directory is created if needed; files are never overwritten
+    (the timestamp makes each filename unique)."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    universe = result.get("meta", {}).get("universe", "scan")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = out_dir / f"scan_{universe}_{ts}.json"
+    result.setdefault("meta", {})["saved_to"] = str(path)  # record before writing
+    path.write_text(json.dumps(result, indent=2))
+    return path
+
+
 def scan_market(**kwargs) -> dict:
     """Public entrypoint: wires live I/O, then calls run_screen.
 
@@ -160,4 +176,5 @@ def scan_market(**kwargs) -> dict:
                      _DictFund(), params)
     out["warnings"] = (warnings + idx_warnings + missing_index_warnings
                        + out["warnings"])
+    save_result(out, config.OUTPUT_DIR)  # sets out["meta"]["saved_to"]
     return out

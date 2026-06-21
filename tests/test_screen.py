@@ -35,6 +35,17 @@ def test_run_screen_filters_and_sorts():
     assert r["rs_vs_nifty"] > 0 and r["rs_vs_sector"] > 0
     assert out["meta"]["universe"] == "nifty200"
 
+def test_save_result_writes_timestamped_json(tmp_path):
+    import json
+    result = {"results": [], "warnings": [], "meta": {"universe": "nifty50"}}
+    path = screen.save_result(result, tmp_path)
+    assert path.exists()
+    assert path.name.startswith("scan_nifty50_") and path.suffix == ".json"
+    saved = json.loads(path.read_text())
+    assert saved["meta"]["universe"] == "nifty50"
+    assert saved["meta"]["saved_to"] == str(path)  # file records its own path
+
+
 def test_run_screen_warns_on_unmapped_sector():
     closes = {"ACME": _ramp(100, 1.0, 60)}
     nifty = _ramp(100, 0.1, 60)

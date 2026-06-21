@@ -35,5 +35,30 @@ def scan_market(
         sort_by=sort_by,
     )
 
+@mcp.tool()
+def kite_login() -> dict:
+    """Start Kite login. Returns a login_url to open in your browser; after you
+    log in, the access token is captured and saved automatically (valid until
+    ~6 AM IST next day). Call this once per trading day before screening."""
+    from screener.auth import start_login_capture
+    url = start_login_capture()
+    return {
+        "login_url": url,
+        "instructions": "Open login_url and log in to Zerodha. After the redirect "
+                        "completes, the token is saved automatically — then ask me "
+                        "to screen. Check kite_login_status to confirm.",
+    }
+
+
+@mcp.tool()
+def kite_login_status() -> dict:
+    """Report whether a fresh Kite access token is available for today."""
+    from screener import config
+    from screener.kite_client import load_token, today_trading_date
+    tok = load_token(config.TOKEN_PATH)
+    logged_in = bool(tok and tok.get("date") == today_trading_date())
+    return {"logged_in": logged_in, "token_date": tok.get("date") if tok else None}
+
+
 if __name__ == "__main__":
     mcp.run()

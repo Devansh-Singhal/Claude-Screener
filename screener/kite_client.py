@@ -44,7 +44,8 @@ class KiteClient:
         tok = load_token(token_path)
         if tok is None or tok.get("date") != today_trading_date():
             raise KiteAuthError(
-                "Kite token missing or stale. Run:  .venv/Scripts/python login.py"
+                "Kite token missing or stale. Use the kite_login tool (in Claude) "
+                "or run:  .venv/Scripts/python login.py"
             )
         kite.set_access_token(tok["access_token"])
         self._kite = kite

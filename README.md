@@ -23,16 +23,25 @@ fields are placeholders (null).
 
 ## Daily use
 
-Each trading morning, mint a token (valid until ~6 AM next day):
-```
-.venv/Scripts/python login.py
-```
-A browser opens; log in. The token is saved to `~/.screener/token.json`.
+Each trading morning, mint a Kite token (valid until ~6 AM IST next day). Two ways:
+
+- **From Claude (recommended):** ask Claude to log in. It calls the `kite_login`
+  tool, which returns a login URL — open it, log in to Zerodha, and the token is
+  captured and saved automatically. `kite_login_status` confirms you're logged in.
+- **From a terminal:** `.venv/Scripts/python login.py` — a browser opens; log in.
+
+Either way the token is saved to `~/.screener/token.json`.
 
 Run a screen from the CLI:
 ```
 .venv/Scripts/python cli.py --universe nifty200 --lookback-days 7
 ```
+
+## Output
+
+Every scan is saved to `output/scan_<universe>_<timestamp>.json` (kept, never
+auto-deleted; the folder is gitignored). The same JSON is also returned to the
+caller, and its path appears in `meta.saved_to`.
 
 ## Claude Desktop config
 
@@ -51,9 +60,10 @@ Add to `claude_desktop_config.json`:
   }
 }
 ```
-Restart Claude Desktop. Ask: "Screen Nifty 200 for stocks outperforming NIFTY 50
-and their sector over 7 days with SMA20 above SMA50." Claude calls `scan_market`
-once.
+Restart Claude Desktop. Tools exposed: `kite_login`, `kite_login_status`, and
+`scan_market`. Ask Claude to log in (once per day), then: "Screen Nifty 200 for
+stocks outperforming NIFTY 50 and their sector over 7 days with SMA20 above
+SMA50." Claude calls `scan_market` once.
 
 ## Tests
 ```
