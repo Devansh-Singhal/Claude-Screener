@@ -22,6 +22,8 @@ class ScreenParams:
     supertrend_period: int = 10
     supertrend_multiplier: float = 3.0
     supertrend_wilder: bool = True            # Wilder ATR (chart default)
+    window_52w: int = 252                     # trading days in a 52-week window
+    max_pct_below_52w_high: float | None = None  # opt-in: within N% of 52w high
     min_roe: float | None = None      # accepted, no-op in v1
     max_pe: float | None = None       # accepted, no-op in v1
     min_market_cap: float | None = None  # accepted, no-op in v1
@@ -48,9 +50,12 @@ def run_screen(constituents, candles, nifty_closes, sector_closes,
             warnings.append(f"{c.symbol}: insufficient history ({e}), skipped")
             continue
 
+        highs = [b["high"] for b in bars]
+        lows = [b["low"] for b in bars]
+
         try:
             st = compute_supertrend(
-                [b["high"] for b in bars], [b["low"] for b in bars], series,
+                highs, lows, series,
                 period=params.supertrend_period,
                 multiplier=params.supertrend_multiplier,
                 wilder=params.supertrend_wilder,
@@ -59,6 +64,12 @@ def run_screen(constituents, candles, nifty_closes, sector_closes,
             st = {"trend": None, "signal": None, "value": None}
 
         if params.require_supertrend_bullish and st["trend"] != 1:
+            continue
+
+        high_52w, low_52w = indicators.high_low_52w(highs, lows, params.window_52w)
+        pct_from_52w_high = indicators.pct_from_high(series[-1], high_52w)
+        if (params.max_pct_below_52w_high is not None
+                and -pct_from_52w_high > params.max_pct_below_52w_high):
             continue
 
         index_name = sector_index_for(c.industry)
@@ -101,6 +112,9 @@ def run_screen(constituents, candles, nifty_closes, sector_closes,
             "supertrend": st["trend"],            # +1 up, -1 down, None if n/a
             "supertrend_signal": st["signal"],    # "buy"/"sell"/None (fresh flip)
             "supertrend_value": st["value"],
+            "high_52w": round(high_52w, 2),
+            "low_52w": round(low_52w, 2),
+            "pct_from_52w_high": round(pct_from_52w_high, 2),  # negative = below
         })
 
     results.sort(key=lambda r: r[params.sort_by], reverse=True)

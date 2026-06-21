@@ -19,6 +19,7 @@ def scan_market(
     require_supertrend_bullish: bool = False,
     supertrend_period: int = 10,
     supertrend_multiplier: float = 3.0,
+    max_pct_below_52w_high: float | None = None,
     sort_by: str = "rs_vs_nifty",
 ) -> dict:
     """Screen a Nifty universe and return qualifying stocks as JSON.
@@ -27,7 +28,10 @@ def scan_market(
     SMA-long over `lookback_days`, and (opt-in) require_supertrend_bullish to
     keep only stocks currently in a Supertrend uptrend. Every result also reports
     `supertrend` (+1 up / -1 down), `supertrend_signal` ("buy"/"sell"/null on a
-    fresh flip), and `supertrend_value`. Fundamentals fields are null in v1.
+    fresh flip), and `supertrend_value`. Each result also reports `high_52w`,
+    `low_52w`, and `pct_from_52w_high` (negative = below the high); set
+    max_pct_below_52w_high to keep only stocks within N%% of their 52-week high.
+    Fundamentals fields are null in v1.
     """
     return _scan(
         universe=universe,
@@ -41,6 +45,7 @@ def scan_market(
         require_supertrend_bullish=require_supertrend_bullish,
         supertrend_period=supertrend_period,
         supertrend_multiplier=supertrend_multiplier,
+        max_pct_below_52w_high=max_pct_below_52w_high,
         sort_by=sort_by,
     )
 

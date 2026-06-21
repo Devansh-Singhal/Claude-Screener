@@ -24,3 +24,22 @@ def test_pct_return_insufficient_data_raises():
 
 def test_relative_strength_is_difference():
     assert indicators.relative_strength(10.0, 4.0) == pytest.approx(6.0)
+
+def test_high_low_52w_over_all_bars():
+    assert indicators.high_low_52w([1, 5, 3], [1, 2, 1]) == (5, 1)
+
+def test_high_low_52w_respects_window():
+    # window=2 -> only the last two bars
+    assert indicators.high_low_52w([10, 1, 3, 2], [9, 1, 2, 2], window=2) == (3, 2)
+
+def test_high_low_52w_empty_raises():
+    with pytest.raises(ValueError):
+        indicators.high_low_52w([], [])
+
+def test_pct_from_high_below_and_at():
+    assert indicators.pct_from_high(95, 100) == pytest.approx(-5.0)
+    assert indicators.pct_from_high(100, 100) == pytest.approx(0.0)
+
+def test_pct_from_high_zero_raises():
+    with pytest.raises(ValueError):
+        indicators.pct_from_high(100, 0)

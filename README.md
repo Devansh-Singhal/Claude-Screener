@@ -47,6 +47,14 @@ only stocks currently in a Supertrend uptrend. Tune with `supertrend_period` /
 `supertrend_multiplier`. Ask Claude e.g. "...and only those with a bullish
 Supertrend."
 
+## 52-week high / low
+
+Every result reports `high_52w`, `low_52w`, and `pct_from_52w_high` (negative =
+below the high; e.g. -5 means 5% under the 52-week high). Add
+`max_pct_below_52w_high` (CLI: `--max-below-52w-high 5`) to keep only stocks
+within N% of their 52-week high — a momentum/breakout filter. The fetch window
+covers ~1 year of daily candles to support this.
+
 ## TradingView watchlist export (on demand)
 
 Turn results into a TradingView-importable file when you ask. In Claude, after a

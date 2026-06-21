@@ -9,8 +9,9 @@ OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 
 # Kite historical-data API limit (requests per second).
 KITE_RATE_LIMIT_PER_SEC = 3
-# Trading-day candles to fetch: lookback + longest SMA + buffer.
-HISTORY_DAYS = 120
+# Trading-day target for the fetch window. Sized to cover 52-week high/low
+# (~252 trading days) plus SMA/lookback. The fetch widens this for weekends.
+HISTORY_DAYS = 260
 
 class ConfigError(Exception):
     pass

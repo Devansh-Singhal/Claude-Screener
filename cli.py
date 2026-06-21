@@ -23,6 +23,8 @@ def main():
                    help="keep only stocks currently in a Supertrend uptrend")
     p.add_argument("--supertrend-period", type=int, default=10)
     p.add_argument("--supertrend-multiplier", type=float, default=3.0)
+    p.add_argument("--max-below-52w-high", type=float, default=None,
+                   help="keep only stocks within this %% of their 52-week high")
     p.add_argument("--sort-by", default="rs_vs_nifty",
                    choices=["rs_vs_nifty", "rs_vs_sector", "return7"])
     p.add_argument("--watchlist", action="store_true",
@@ -41,6 +43,7 @@ def main():
         require_supertrend_bullish=a.supertrend_bullish,
         supertrend_period=a.supertrend_period,
         supertrend_multiplier=a.supertrend_multiplier,
+        max_pct_below_52w_high=a.max_below_52w_high,
         sort_by=a.sort_by,
     )
     print(json.dumps(out, indent=2))

@@ -66,6 +66,30 @@ def test_run_screen_warns_on_unmapped_sector():
     assert any("Telecommunication" in w or "ACME" in w for w in out["warnings"])
 
 
+def test_max_pct_below_52w_high_filters_and_reports():
+    # Rises to ~158 then falls to ~100: last close sits ~37% below the 52w high.
+    closes = _ramp(100, 2.0, 30) + _ramp(158, -2.0, 30)
+    candles = {"FADED": _candles(closes)}
+    nifty = [100.0] * 60
+    constituents = [Constituent("FADED", "Faded Co", "Information Technology")]
+    base = dict(
+        constituents=constituents, candles=candles, nifty_closes=nifty,
+        sector_closes={}, fundamentals={"FADED": {}},
+    )
+    loose = screen.ScreenParams(require_outperform_benchmark=False,
+                                require_outperform_sector=False,
+                                require_sma_bullish=False)
+    out = screen.run_screen(params=loose, **base)
+    assert out["results"][0]["pct_from_52w_high"] < -30   # reported, far below high
+
+    tight = screen.ScreenParams(require_outperform_benchmark=False,
+                                require_outperform_sector=False,
+                                require_sma_bullish=False,
+                                max_pct_below_52w_high=10)
+    out2 = screen.run_screen(params=tight, **base)
+    assert out2["results"] == []                          # >10% below high -> dropped
+
+
 def test_require_supertrend_bullish_filters_downtrends():
     # DOWN is a steady decline -> Supertrend bearish -> filtered out when required.
     down = _ramp(160, -1.0, 60)
