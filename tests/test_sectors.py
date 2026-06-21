@@ -2,7 +2,7 @@ from screener import sectors
 
 def test_known_industries_map_to_index():
     assert sectors.sector_index_for("Information Technology") == "NIFTY IT"
-    assert sectors.sector_index_for("Financial Services") == "NIFTY FINANCIAL SERVICES"
+    assert sectors.sector_index_for("Financial Services") == "NIFTY FIN SERVICE"
     assert sectors.sector_index_for("Fast Moving Consumer Goods") == "NIFTY FMCG"
 
 def test_unmapped_industry_returns_none():
