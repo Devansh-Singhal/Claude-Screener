@@ -58,19 +58,38 @@ class KiteClient:
         candles = self._kite.historical_data(token, from_date, to_date, "day")
         return [float(c["close"]) for c in candles]
 
-    def fetch_closes(self, token_by_symbol: dict[str, int], days: int):
-        """Returns (closes_by_symbol, warnings). Failed symbols are skipped."""
-        closes: dict[str, list[float]] = {}
+    def _candles_for(self, token: int, days: int) -> list[dict]:
+        self._limiter.acquire()
+        to_date = datetime.now(IST).date()
+        from_date = to_date - timedelta(days=days * 2)  # calendar buffer for weekends
+        candles = self._kite.historical_data(token, from_date, to_date, "day")
+        return [{"high": float(c["high"]), "low": float(c["low"]),
+                 "close": float(c["close"])} for c in candles]
+
+    def _fetch(self, worker, token_by_symbol: dict[str, int], days: int):
+        """Run `worker(token, days)` concurrently per symbol; skip failures."""
+        out: dict = {}
         warnings: list[str] = []
         with ThreadPoolExecutor(max_workers=config.KITE_RATE_LIMIT_PER_SEC) as ex:
             futures = {
-                ex.submit(self._closes_for, tok, days): sym
+                ex.submit(worker, tok, days): sym
                 for sym, tok in token_by_symbol.items()
             }
             for fut in as_completed(futures):
                 sym = futures[fut]
                 try:
-                    closes[sym] = fut.result()
+                    out[sym] = fut.result()
                 except Exception as e:
                     warnings.append(f"{sym}: historical fetch failed ({e}), skipped")
-        return closes, warnings
+        return out, warnings
+
+    def fetch_closes(self, token_by_symbol: dict[str, int], days: int):
+        """Returns (closes_by_symbol, warnings). Each value is a list of daily
+        closes (oldest first). Failed symbols are skipped. Used for indices."""
+        return self._fetch(self._closes_for, token_by_symbol, days)
+
+    def fetch_candles(self, token_by_symbol: dict[str, int], days: int):
+        """Returns (candles_by_symbol, warnings). Each value is a list of daily
+        {high, low, close} dicts (oldest first). Used for stocks (Supertrend/ATR
+        need high & low). Failed symbols are skipped."""
+        return self._fetch(self._candles_for, token_by_symbol, days)

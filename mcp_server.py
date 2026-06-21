@@ -16,12 +16,18 @@ def scan_market(
     require_outperform_benchmark: bool = True,
     require_outperform_sector: bool = True,
     require_sma_bullish: bool = True,
+    require_supertrend_bullish: bool = False,
+    supertrend_period: int = 10,
+    supertrend_multiplier: float = 3.0,
     sort_by: str = "rs_vs_nifty",
 ) -> dict:
     """Screen a Nifty universe and return qualifying stocks as JSON.
 
-    Filters: outperform NIFTY 50, outperform sector index, and SMA-short above
-    SMA-long over `lookback_days`. Fundamentals fields are null in v1.
+    Filters: outperform NIFTY 50, outperform sector index, SMA-short above
+    SMA-long over `lookback_days`, and (opt-in) require_supertrend_bullish to
+    keep only stocks currently in a Supertrend uptrend. Every result also reports
+    `supertrend` (+1 up / -1 down), `supertrend_signal` ("buy"/"sell"/null on a
+    fresh flip), and `supertrend_value`. Fundamentals fields are null in v1.
     """
     return _scan(
         universe=universe,
@@ -32,6 +38,9 @@ def scan_market(
         require_outperform_benchmark=require_outperform_benchmark,
         require_outperform_sector=require_outperform_sector,
         require_sma_bullish=require_sma_bullish,
+        require_supertrend_bullish=require_supertrend_bullish,
+        supertrend_period=supertrend_period,
+        supertrend_multiplier=supertrend_multiplier,
         sort_by=sort_by,
     )
 

@@ -37,6 +37,16 @@ Run a screen from the CLI:
 .venv/Scripts/python cli.py --universe nifty200 --lookback-days 7
 ```
 
+## Supertrend
+
+Every result reports Supertrend (ATR period 10, multiplier 3.0, Wilder's ATR —
+the chart defaults): `supertrend` (+1 up / -1 down), `supertrend_signal`
+("buy"/"sell"/null on a fresh flip this candle), and `supertrend_value` (the
+line). Add `require_supertrend_bullish` (CLI: `--supertrend-bullish`) to keep
+only stocks currently in a Supertrend uptrend. Tune with `supertrend_period` /
+`supertrend_multiplier`. Ask Claude e.g. "...and only those with a bullish
+Supertrend."
+
 ## Output
 
 Every scan is saved to `output/scan_<universe>_<timestamp>.json` (kept, never

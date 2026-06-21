@@ -5,6 +5,7 @@ from pathlib import Path
 
 from . import indicators
 from .sectors import sector_index_for
+from .supertrend import supertrend as compute_supertrend
 from .universe import Constituent, fetch_universe
 
 @dataclass
@@ -17,6 +18,10 @@ class ScreenParams:
     require_outperform_benchmark: bool = True
     require_outperform_sector: bool = True
     require_sma_bullish: bool = True
+    require_supertrend_bullish: bool = False  # opt-in: only Supertrend uptrends
+    supertrend_period: int = 10
+    supertrend_multiplier: float = 3.0
+    supertrend_wilder: bool = True            # Wilder ATR (chart default)
     min_roe: float | None = None      # accepted, no-op in v1
     max_pe: float | None = None       # accepted, no-op in v1
     min_market_cap: float | None = None  # accepted, no-op in v1
@@ -24,22 +29,36 @@ class ScreenParams:
 
 FALLBACK_SECTOR = "the benchmark"
 
-def run_screen(constituents, closes, nifty_closes, sector_closes,
+def run_screen(constituents, candles, nifty_closes, sector_closes,
                fundamentals, params: ScreenParams) -> dict:
     warnings: list[str] = []
     nifty_ret = indicators.pct_return(nifty_closes, params.lookback_days)
     results = []
 
     for c in constituents:
-        series = closes.get(c.symbol)
-        if series is None:
+        bars = candles.get(c.symbol)
+        if bars is None:
             continue  # fetch failure already warned upstream
+        series = [b["close"] for b in bars]
         try:
             ret = indicators.pct_return(series, params.lookback_days)
             sma_s = indicators.sma(series, params.sma_short)
             sma_l = indicators.sma(series, params.sma_long)
         except ValueError as e:
             warnings.append(f"{c.symbol}: insufficient history ({e}), skipped")
+            continue
+
+        try:
+            st = compute_supertrend(
+                [b["high"] for b in bars], [b["low"] for b in bars], series,
+                period=params.supertrend_period,
+                multiplier=params.supertrend_multiplier,
+                wilder=params.supertrend_wilder,
+            )
+        except ValueError:
+            st = {"trend": None, "signal": None, "value": None}
+
+        if params.require_supertrend_bullish and st["trend"] != 1:
             continue
 
         index_name = sector_index_for(c.industry)
@@ -79,6 +98,9 @@ def run_screen(constituents, closes, nifty_closes, sector_closes,
             "sector_return7": round(sector_ret, 2),
             "rs_vs_nifty": round(rs_nifty, 2),
             "rs_vs_sector": round(rs_sector, 2),
+            "supertrend": st["trend"],            # +1 up, -1 down, None if n/a
+            "supertrend_signal": st["signal"],    # "buy"/"sell"/None (fresh flip)
+            "supertrend_value": st["value"],
         })
 
     results.sort(key=lambda r: r[params.sort_by], reverse=True)
@@ -159,7 +181,7 @@ def scan_market(**kwargs) -> dict:
     index_token = {name: idx_token[name] for name in needed_indices
                    if name in idx_token}
 
-    closes, warnings = client.fetch_closes(sym_token, config.HISTORY_DAYS)
+    candles, warnings = client.fetch_candles(sym_token, config.HISTORY_DAYS)
     index_closes, idx_warnings = client.fetch_closes(index_token, config.HISTORY_DAYS)
 
     nifty_closes = index_closes.get(params.benchmark, [])
@@ -172,7 +194,7 @@ def scan_market(**kwargs) -> dict:
         def get(self, sym, default=None):
             return fund_data.get(sym, {})
 
-    out = run_screen(constituents, closes, nifty_closes, sector_closes,
+    out = run_screen(constituents, candles, nifty_closes, sector_closes,
                      _DictFund(), params)
     out["warnings"] = (warnings + idx_warnings + missing_index_warnings
                        + out["warnings"])

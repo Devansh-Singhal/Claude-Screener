@@ -19,6 +19,10 @@ def main():
     p.add_argument("--no-outperform-benchmark", action="store_true")
     p.add_argument("--no-outperform-sector", action="store_true")
     p.add_argument("--no-sma-bullish", action="store_true")
+    p.add_argument("--supertrend-bullish", action="store_true",
+                   help="keep only stocks currently in a Supertrend uptrend")
+    p.add_argument("--supertrend-period", type=int, default=10)
+    p.add_argument("--supertrend-multiplier", type=float, default=3.0)
     p.add_argument("--sort-by", default="rs_vs_nifty",
                    choices=["rs_vs_nifty", "rs_vs_sector", "return7"])
     a = p.parse_args()
@@ -32,6 +36,9 @@ def main():
         require_outperform_benchmark=not a.no_outperform_benchmark,
         require_outperform_sector=not a.no_outperform_sector,
         require_sma_bullish=not a.no_sma_bullish,
+        require_supertrend_bullish=a.supertrend_bullish,
+        supertrend_period=a.supertrend_period,
+        supertrend_multiplier=a.supertrend_multiplier,
         sort_by=a.sort_by,
     )
     print(json.dumps(out, indent=2))

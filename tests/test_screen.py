@@ -4,12 +4,16 @@ from screener.universe import Constituent
 def _ramp(start, step, n):
     return [start + step * i for i in range(n)]
 
+def _candles(closes):
+    """Wrap a close series as OHLC bars (tight band) for run_screen."""
+    return [{"high": c + 0.5, "low": c - 0.5, "close": c} for c in closes]
+
 def test_run_screen_filters_and_sorts():
     # 60 points so SMA50 and 7-day return are defined.
     # STRONG rises fast (beats nifty + sector), WEAK is flat.
     strong = _ramp(100, 1.0, 60)   # +0.6/day, strongly up, sma20>sma50
     weak = [100.0] * 60            # flat: no outperformance
-    closes = {"STRONG": strong, "WEAK": weak}
+    candles = {"STRONG": _candles(strong), "WEAK": _candles(weak)}
     nifty = _ramp(100, 0.1, 60)
     sector_closes = {"NIFTY IT": _ramp(100, 0.2, 60)}
     constituents = [
@@ -20,7 +24,7 @@ def test_run_screen_filters_and_sorts():
 
     out = screen.run_screen(
         constituents=constituents,
-        closes=closes,
+        candles=candles,
         nifty_closes=nifty,
         sector_closes=sector_closes,
         fundamentals=fundamentals,
@@ -33,6 +37,7 @@ def test_run_screen_filters_and_sorts():
     assert r["sector"] == "Information Technology"
     assert r["pe"] is None and r["roe"] is None and r["roce"] is None
     assert r["rs_vs_nifty"] > 0 and r["rs_vs_sector"] > 0
+    assert r["supertrend"] == 1        # STRONG ramp is a Supertrend uptrend
     assert out["meta"]["universe"] == "nifty200"
 
 def test_save_result_writes_timestamped_json(tmp_path):
@@ -47,15 +52,37 @@ def test_save_result_writes_timestamped_json(tmp_path):
 
 
 def test_run_screen_warns_on_unmapped_sector():
-    closes = {"ACME": _ramp(100, 1.0, 60)}
+    candles = {"ACME": _candles(_ramp(100, 1.0, 60))}
     nifty = _ramp(100, 0.1, 60)
     constituents = [Constituent("ACME", "Acme", "Telecommunication")]
     out = screen.run_screen(
         constituents=constituents,
-        closes=closes,
+        candles=candles,
         nifty_closes=nifty,
         sector_closes={},
         fundamentals={"ACME": {}},
         params=screen.ScreenParams(require_outperform_sector=False),
     )
     assert any("Telecommunication" in w or "ACME" in w for w in out["warnings"])
+
+
+def test_require_supertrend_bullish_filters_downtrends():
+    # DOWN is a steady decline -> Supertrend bearish -> filtered out when required.
+    down = _ramp(160, -1.0, 60)
+    candles = {"DOWN": _candles(down)}
+    nifty = _ramp(100, -0.5, 60)   # nifty falls more, so DOWN still "outperforms"
+    constituents = [Constituent("DOWN", "Down Co", "Information Technology")]
+    params = screen.ScreenParams(
+        require_outperform_sector=False,
+        require_sma_bullish=False,
+        require_supertrend_bullish=True,
+    )
+    out = screen.run_screen(
+        constituents=constituents,
+        candles=candles,
+        nifty_closes=nifty,
+        sector_closes={},
+        fundamentals={"DOWN": {}},
+        params=params,
+    )
+    assert out["results"] == []        # bearish Supertrend removed it
