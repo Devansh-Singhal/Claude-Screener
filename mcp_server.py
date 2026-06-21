@@ -45,6 +45,21 @@ def scan_market(
     )
 
 @mcp.tool()
+def export_watchlist(symbols: list[str], exchange: str = "NSE",
+                     section: str | None = None) -> dict:
+    """Write the given symbols to a TradingView-importable .txt file (exchange-
+    prefixed, comma-separated) in the output folder. Use after a scan to turn
+    results into a watchlist: in TradingView, Watchlist menu -> Import, pick the
+    returned file. Returns its path, the file content, and the symbol count."""
+    from screener import config
+    from screener.watchlist import save_watchlist
+    path = save_watchlist(symbols, config.OUTPUT_DIR, exchange=exchange, section=section)
+    content = path.read_text()
+    count = content.replace("###" + (section or ""), "").count(":") if content else 0
+    return {"path": str(path), "content": content, "count": count}
+
+
+@mcp.tool()
 def kite_login() -> dict:
     """Start Kite login. Returns a login_url to open in your browser; after you
     log in, the access token is captured and saved automatically (valid until

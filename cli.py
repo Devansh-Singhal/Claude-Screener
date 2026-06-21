@@ -25,6 +25,8 @@ def main():
     p.add_argument("--supertrend-multiplier", type=float, default=3.0)
     p.add_argument("--sort-by", default="rs_vs_nifty",
                    choices=["rs_vs_nifty", "rs_vs_sector", "return7"])
+    p.add_argument("--watchlist", action="store_true",
+                   help="also write a TradingView-importable .txt of the results")
     a = p.parse_args()
 
     out = scan_market(
@@ -42,6 +44,13 @@ def main():
         sort_by=a.sort_by,
     )
     print(json.dumps(out, indent=2))
+
+    if a.watchlist:
+        from screener.watchlist import save_watchlist
+        from screener import config
+        symbols = [r["symbol"] for r in out["results"]]
+        path = save_watchlist(symbols, config.OUTPUT_DIR)
+        print(f"watchlist written: {path}", file=sys.stderr)
 
 if __name__ == "__main__":
     sys.exit(main())

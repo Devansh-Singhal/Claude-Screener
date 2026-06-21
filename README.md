@@ -47,6 +47,15 @@ only stocks currently in a Supertrend uptrend. Tune with `supertrend_period` /
 `supertrend_multiplier`. Ask Claude e.g. "...and only those with a bullish
 Supertrend."
 
+## TradingView watchlist export (on demand)
+
+Turn results into a TradingView-importable file when you ask. In Claude, after a
+scan: "export those to a TradingView watchlist" — Claude calls the
+`export_watchlist` tool, which writes `output/watchlist_<timestamp>.txt`
+(exchange-prefixed, comma-separated, e.g. `NSE:TRENT,NSE:INDIGO`). From the CLI:
+`.venv/Scripts/python cli.py --universe nifty50 --watchlist`. Import in
+TradingView via the Watchlist menu -> Import.
+
 ## Output
 
 Every scan is saved to `output/scan_<universe>_<timestamp>.json` (kept, never
